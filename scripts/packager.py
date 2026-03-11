@@ -1,43 +1,49 @@
 import os
 import sys
-import argparse
 from pathlib import Path
 
-def generate_skill_md(folder_path, name):
-    skill_md_path = folder_path / "SKILL.md"
-    if skill_md_path.exists():
-        print(f"✅ {name} 文件夹已有 SKILL.md，跳过生成。")
-        return
+def identify_project(folder_path):
+    print(f"🔍 正在智能识别项目类型: {folder_path.name}")
+    
+    files = [f.name for f in folder_path.iterdir() if f.is_file()]
+    
+    # 识别逻辑
+    if "package.json" in files:
+        return "Node.js (NPM)"
+    elif "requirements.txt" in files or any(folder_path.glob("*.py")):
+        return "Python"
+    elif "go.mod" in files:
+        return "Go"
+    return "通用代码项目"
 
-    print(f"🚀 正在为 {name} 生成基础 SKILL.md...")
-    
-    # 简单的自动分析：是否有 python 文件？
-    has_python = any(folder_path.glob("**/*.py"))
-    
-    content = f"""---
+def generate_metadata(folder_path, name):
+    project_type = identify_project(folder_path)
+    print(f"✅ 项目类型识别为: {project_type}")
+
+    skill_md_path = folder_path / "SKILL.md"
+    if not skill_md_path.exists():
+        print(f"🚀 为 AI Agent 自动生成 Skill 元数据...")
+        content = f"""---
 name: {name.lower().replace(' ', '-')}
-description: 此 Skill 自动打包自 {name}。请根据脚本内容调整此描述。
+description: 此项目是一个 {project_type} 自动化工具，由 skillupload 自动上传。
 ---
-# {name} Skill 指南
-当此 Skill 激活时：
-1. **环境准备**：检查是否有 requirements.txt 并安装。
-2. **执行指令**：根据项目结构运行主要入口程序。
+# {name} 使用指南
+此项目类型为：{project_type}。
+在使用此 Skill 之前，请确保已安装相应的环境并配置好依赖。
 """
-    with open(skill_md_path, "w") as f:
-        f.write(content)
-    print(f"✅ 已生成 {skill_md_path}")
+        with open(skill_md_path, "w") as f:
+            f.write(content)
+        print(f"✅ 已生成 Skill 描述文件。")
 
 def main():
+    import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--path", required=True, help="待整理的文件夹路径")
+    parser.add_argument("--path", required=True)
     args = parser.parse_args()
 
     target_path = Path(args.path).resolve()
-    if not target_path.exists() or not target_path.is_dir():
-        print(f"❌ 路径无效: {target_path}")
-        sys.exit(1)
-
-    generate_skill_md(target_path, target_path.name)
+    if target_path.exists():
+        generate_metadata(target_path, target_path.name)
 
 if __name__ == "__main__":
     main()
